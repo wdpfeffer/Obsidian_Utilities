@@ -56,6 +56,21 @@ def get_markdown_files(path):
 
     return mdfiles
 
+def markdown_folder_exits(path: pl.Path) ->bool:
+    pathstr = path.as_posix().replace('.md','')
+    path = pl.Path(pathstr)
+    if path.exists():
+        return True
+    else:
+        return False
+
+def markdown_pdf_exists(path: pl.Path)->bool:
+    pathstr = path.as_posix().replace('.md','.pdf')
+    path = pl.Path(pathstr)
+    if path.exists():
+        return True
+    else:
+        return False
 
 
 def save_config():
@@ -79,7 +94,10 @@ def run_cleanup():
     #get markdown files
     os.chdir(config.watch_dir)
     mdfiles = get_markdown_files(config.watch_dir)
-    print(mdfiles)
+    for mdf in mdfiles:
+        bPathFolder = markdown_folder_exits(mdf)
+        bPdf = markdown_pdf_exists(mdf)
+        print(f'path: {mdf.as_posix()}, {' '*5} folder: {bPathFolder} {' '*5} PDF: {bPdf}')
     
 
 def exit_program():
@@ -150,9 +168,6 @@ if __name__ == "__main__":
 
         exit_button = tk.Button(text="Cancel", master=frame3, command=exit_program)
         exit_button.pack(side=tk.LEFT)
-
-
-
 
 
         window.mainloop()
