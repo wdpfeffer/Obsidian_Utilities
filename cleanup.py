@@ -10,6 +10,8 @@ import pathlib as pl
 import os
 from dataclasses import dataclass
 import shutil
+from thefuzz import fuzz
+
 
 
 @dataclass
@@ -65,12 +67,18 @@ def markdown_folder_exits(path: pl.Path) ->bool:
         return False
 
 def markdown_pdf_exists(path: pl.Path)->bool:
-    pathstr = path.as_posix().replace('.md','.pdf')
-    path = pl.Path(pathstr)
-    if path.exists():
-        return True
-    else:
-        return False
+    ret_val = None
+    pathstr = path.parent
+    pdf_files = list(filter(lambda x:'.pdf' in x, os.listdir(pathstr)))
+    for pdf in pdf_files:
+        file_name = path.name
+        rat = fuzz.partial_ratio(pdf.replace('.pdf',''),file_name.replace('.md',''))
+        if rat >= 97:
+            ret_val = pdf
+            break
+        print(f'Ratio: {rat}')
+
+    return ret_val
 
 
 def save_config():
@@ -96,8 +104,13 @@ def run_cleanup():
     mdfiles = get_markdown_files(config.watch_dir)
     for mdf in mdfiles:
         bPathFolder = markdown_folder_exits(mdf)
-        bPdf = markdown_pdf_exists(mdf)
-        print(f'path: {mdf.as_posix()}, {' '*5} folder: {bPathFolder} {' '*5} PDF: {bPdf}')
+        # run through all files in folder and adjust links in *.md file to reflect new directory structure
+        # move file to _resources with this folder name
+        
+        pdf = markdown_pdf_exists(mdf)
+        if pdf is not None:
+            #add link to the top of the *.md file
+            # move file to _resources
     
 
 def exit_program():
