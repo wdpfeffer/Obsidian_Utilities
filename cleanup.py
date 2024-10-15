@@ -11,6 +11,7 @@ import os
 from dataclasses import dataclass
 import shutil
 from thefuzz import fuzz
+import re
 
 
 
@@ -48,7 +49,7 @@ def destination_directory():
     dest_dir_text.delete(0, tk.END)
     dest_dir_text.insert(tk.END, directory_path)
 
-def get_markdown_files(path):
+def get_markdown_files(path)->list:
 
     os.chdir(path)
     mdfiles=[]
@@ -94,6 +95,34 @@ def save_config():
     with open('config.json','w') as f:
         json.dump(cf,f)
 
+def change_image_links(mdfile:pl.Path):
+    
+    
+    images = os.listdir(mdfile.parent.joinpath(mdfile.name.replace('.md','')))
+    mdtext = ''
+    with open(mdfile,'r') as f:
+        mdtext = f.read()
+        for img in images:
+            end_idx = mdtext.find(img)
+            begin_idx = 0
+            for i in range(end_idx,0,-1):
+                if mdtext[i]=='(' and mdtext[i-1]==']':
+                    begin_idx=i
+                    break
+            
+            result = mdtext[:begin_idx+1] + mdtext[end_idx:]
+            mdtext = result
+    
+    #make sure images do not have tabs in front of them
+   
+    mdtext = mdtext.replace('    ![','![')
+    
+    #make a new file
+    newfile = pl.Path(mdfile.parent).joinpath("mod_" + mdfile.name)
+
+    with open(newfile, 'w') as f:
+                f.write(mdtext)
+
 def run_cleanup():
 
     global config
@@ -105,10 +134,13 @@ def run_cleanup():
     for mdf in mdfiles:
         bPathFolder = markdown_folder_exits(mdf)
         # run through all files in folder and adjust links in *.md file to reflect new directory structure
+        if bPathFolder:
+            change_image_links(mdf)
         # move file to _resources with this folder name
         
         pdf = markdown_pdf_exists(mdf)
         if pdf is not None:
+            pass
             #add link to the top of the *.md file
             # move file to _resources
     
