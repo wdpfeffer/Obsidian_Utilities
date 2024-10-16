@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import shutil
 from thefuzz import fuzz
 import re
+import logging
 
 
 
@@ -67,8 +68,8 @@ def markdown_folder_exits(path: pl.Path) ->bool:
     else:
         return False
 
-def markdown_pdf_exists(path: pl.Path)->bool:
-    ret_val = None
+def markdown_pdf_exists(path: pl.Path)->str:
+    ret_val = ''
     pathstr = path.parent
     pdf_files = list(filter(lambda x:'.pdf' in x, os.listdir(pathstr)))
     for pdf in pdf_files:
@@ -110,47 +111,82 @@ def change_image_links(mdfile:pl.Path):
                     begin_idx=i
                     break
             
-            result = mdtext[:begin_idx+1] + mdtext[end_idx:]
-            mdtext = result
+            if begin_idx >0 and end_idx>0:
+                result = mdtext[:begin_idx+1] + mdtext[end_idx:]
+                mdtext = result
     
     #make sure images do not have tabs in front of them
    
     mdtext = mdtext.replace('    ![','![')
     
     #make a new file
-    newfile = pl.Path(mdfile.parent).joinpath("mod_" + mdfile.name)
+    #newfile = pl.Path(mdfile.parent).joinpath("mod_" + mdfile.name)
 
-    with open(newfile, 'w') as f:
-                f.write(mdtext)
+    with open(mdfile, 'w') as f:
+        f.write(mdtext)
 
 def run_cleanup():
 
     global config
+    #global logging
+
+    res_folder = '_resources'
 
     print('cleanup starting')
     #get markdown files
     os.chdir(config.watch_dir)
     mdfiles = get_markdown_files(config.watch_dir)
     for mdf in mdfiles:
+        
+        pdf = markdown_pdf_exists(mdf)
+        if pdf !='':
+    
+            #add link to the top of the *.md file
+            with open(mdf,'r') as f:
+                mdf_text = f.read()
+                new_text = '![['+ pdf + ']]\n' + mdf_text
+
+            #save new mdf file
+            with open(mdf,'w') as f:
+                f.write(new_text)
+            
+            # move file to _resources
+            try:
+                shutil.move(config.watch_dir+'/'+pdf, config.dest_dir + '/' +res_folder +'/' +pdf)
+            except Exception as e:
+                logger.error('Error selecting source directory: {}'.format(e))
+                
+            
+
         bPathFolder = markdown_folder_exits(mdf)
         # run through all files in folder and adjust links in *.md file to reflect new directory structure
         if bPathFolder:
+            #update links in markdown file
             change_image_links(mdf)
-        # move file to _resources with this folder name
-        
-        pdf = markdown_pdf_exists(mdf)
-        if pdf is not None:
-            pass
-            #add link to the top of the *.md file
-            # move file to _resources
+            # move file and folder to correct location
+            try:
+                # move file first
+                shutil.move(mdf.as_posix(), config.dest_dir + f'/{mdf.name}')
+
+                #next move the folder
+                shutil.move(mdf.as_posix().replace('.md',''), config.dest_dir + f'/{res_folder}/{mdf.name.replace('.md','')}')
+            
+            except Exception as e:
+                logger.error('Error selecting source directory: {}'.format(e))
     
 
 def exit_program():
     sys.exit(0)
 
+#setup logging
+logging.basicConfig(filename='logger.log', level=logging.INFO, 
+format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     config = None
+
+    
 
     if len(sys.argv)>1:
         print(sys.argv)
