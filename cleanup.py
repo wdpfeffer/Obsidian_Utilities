@@ -1,7 +1,6 @@
 #watchdog file
 import watchdog.events
 import watchdog.observers
-import time
 import sys
 import tkinter as tk
 from tkinter import filedialog
@@ -11,7 +10,6 @@ import os
 from dataclasses import dataclass
 import shutil
 from thefuzz import fuzz
-import re
 import logging
 
 
@@ -77,7 +75,9 @@ def markdown_pdf_exists(path: pl.Path)->str:
         rat = fuzz.partial_ratio(pdf.replace('.pdf',''),file_name.replace('.md',''))
         if rat >= 97:
             ret_val = pdf
+            print(f'Winner = {file_name} with a Ratio = {rat}')
             break
+        
         print(f'Ratio: {rat}')
 
     return ret_val
@@ -173,6 +173,15 @@ def run_cleanup():
             
             except Exception as e:
                 logger.error('Error selecting source directory: {}'.format(e))
+
+
+        else:
+            try:
+                # move file first
+                shutil.move(mdf.as_posix(), config.dest_dir + f'/{mdf.name}')
+            except Exception as e:
+                logger.error('Error selecting source directory: {}'.format(e))
+
     
 
 def exit_program():
